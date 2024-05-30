@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "hyprparser"
 version = "0.0.1"
 authors = [
-  { name="T0kyoB0y", email="" },
+  { name="tokyob0t" },
 ]
 description = "A Pythonic parser for Hyprland configuration files."
 readme = "README.md"

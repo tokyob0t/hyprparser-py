@@ -74,7 +74,7 @@ class Color:
     r: str
     g: str
     b: str
-    a: str
+    a: str = "ff"
 
     @property
     def rgba(self) -> str:
@@ -82,6 +82,9 @@ class Color:
 
     def format(self) -> str:
         return "rgba({})".format(self.rgba)
+
+    def __repr__(self) -> str:
+        return self.format()
 
 
 @dataclass
@@ -100,6 +103,11 @@ class Gradient:
 
     def to_dict(self) -> Dict[str, Union[List[str], int]]:
         return {"colors": list(map(Color.format, self.colors)), "angle": self.angle}
+
+    def __repr__(self) -> str:
+        return "Gradient({}, {}deg)".format(
+            ", ".join(map(Color.__repr__, self.colors)), self.angle
+        )
 
 
 @dataclass
@@ -256,9 +264,8 @@ class TypeParser:
         gradients = value.split()
 
         if gradients[-1].endswith("deg"):
-            angle = TypeParser.to_int(gradients[-1].removesuffix("deg"))
+            angle = TypeParser.to_int(gradients.pop(-1).removesuffix("deg"))
         else:
             angle = 0
 
-        gradients = gradients[:-1]
         return Gradient(angle, list(map(TypeParser.to_color, gradients)))

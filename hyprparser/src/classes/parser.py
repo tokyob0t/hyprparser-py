@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 from .linetype import LineType, LineTypeList
 from .structures import (Bezier, Binding, Env, Exec, Gradient, Monitor,
@@ -30,30 +30,29 @@ class Helper:
     @staticmethod
     def save_file(path: str, content: List[str]) -> None:
         with open(os.path.expandvars(path), "w+") as file:
-            content = list(map(lambda v: v + "\n", content))
-            return file.writelines(content)
+            return file.writelines(map(lambda v: v + "\n", content))
 
     @staticmethod
     def new_sections(sections: List[str]) -> None:
         if not sections:
             return
+
         depth = []
 
         for i, section in enumerate(sections, 0):
             depth += [section]
             _, file = Helper.get_line_option(depth)
 
-            if file:
-                continue
-            line_n, file = Helper.get_line_option(depth[:-1])
-
             if not file:
-                continue
-            indent = "    " * i
-            file.content.insert(line_n + 1, indent + section + " {")
-            file.content.insert(line_n + 2, indent + "}")
-            if i + 1 == len(sections):
-                return file.save()
+                line_n, file = Helper.get_line_option(depth[:-1])
+
+                if not file:
+                    continue
+                indent = "    " * i
+                file.content.insert(line_n + 1, indent + section + " {")
+                file.content.insert(line_n + 2, indent + "}")
+                if i + 1 == len(sections):
+                    return file.save()
 
     @staticmethod
     def read_lines(lines: List[str]):
@@ -155,10 +154,9 @@ class Config:
             return HyprData.new_option(new_option)
         indent = "    " * new_option.option.count(":")
         file.content.insert(line_n + 1, indent + new_option.format())
-        for line in file.content:
-            print(line)
+        return file.save()
 
-    def get_option(self, option: str) -> Any:
+    def get_option(self, option: str) -> Union[Setting, None]:
         return self.config.get(option)
 
     def set_option(

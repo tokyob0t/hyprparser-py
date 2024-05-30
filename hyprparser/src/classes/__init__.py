@@ -1,2 +1,3 @@
-from .parser import (Bezier, Binding, Env, Exec, Gradient, HyprData, Monitor,
-                     Setting, Variable)
+from .parser import HyprData
+from .structures import (Bezier, Binding, Color, Env, Exec, Gradient, Monitor,
+                         Setting, TypeParser, Variable)

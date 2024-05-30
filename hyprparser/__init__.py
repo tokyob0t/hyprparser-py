@@ -1,2 +1,2 @@
-from src import (Bezier, Binding, Env, Exec, Gradient, HyprData, Monitor,
-                 Setting, Variable)
+from src import (Bezier, Binding, Color, Env, Exec, Gradient, HyprData,
+                 Monitor, Setting, Variable)
