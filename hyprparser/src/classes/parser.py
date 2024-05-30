@@ -1,113 +1,25 @@
 import os
+from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple, Union
 
 from .linetype import LineType, LineTypeList
-from .structures import (Bezier, Binding, Env, Exec, File, Gradient, Monitor,
+from .structures import (Bezier, Binding, Env, Exec, Gradient, Monitor,
                          Setting, TypeParser, Variable)
 
 last_section = []
 last_file = ""
 
 
-class Config:
-    def __init__(self, path: str) -> None:
-        self.path = path
-        self.monitors: List[Monitor] = []
-        self.binds: List[Binding] = []
-        self.variables: List[Variable] = []
-        self.config: Dict[str, Setting] = {}
-        self.beziers: Dict[str, Bezier] = {}
-        self.env: Dict[str, Env] = {}
-        self.exec: List[Exec] = []
-        self.files: List[File] = [File(path, WriterReader.read_file(path))]
+@dataclass
+class File:
+    path: str
+    content: List[str]
 
-    def reload(self) -> None:
-        return WriterReader.read_lines(WriterReader.read_file(self.path))
-
-    def new_option(
-        self,
-        value: Union[Bezier, Binding, Env, Exec, Monitor, Setting, Variable],
-    ) -> None:
-
-        if isinstance(value, Bezier):
-            self.beziers[value.name] = value
-        elif isinstance(value, Binding):
-            self.binds.append(value)
-        elif isinstance(value, Env):
-            self.env[value.name] = value
-        elif isinstance(value, Exec):
-            self.exec.append(value)
-        elif isinstance(value, Monitor):
-            self.monitors.append(value)
-        elif isinstance(value, Variable):
-            self.variables.append(value)
-        elif isinstance(value, Setting):
-            self.config[value.option] = value
-        else:
-            return
-
-        line_n, file = self.get_line_option(value)
-
-        if file:
-            indent = "\t" * len(section.split(":"))
-            file.content.insert(line_n + 1, indent + value.format())
-            return WriterReader.save_file(file.path, file.content)
-
-    def set_option(
-        self, option: str, value: Union["Gradient", str, int, float, bool]
-    ) -> None:
-        obj_option = self.config.get(option)
-        if not obj_option:
-            return
-
-        obj_option.value = value
-        new_line = obj_option.format()
-        line_n, file = self.get_line_option(option)
-
-        if file:
-            indent = "\t" * (len(obj_option.option.split(":")) - 1)
-            file.content[line_n] = indent + new_line
-            return WriterReader.save_file(file.path, file.content)
-
-    def get_line_option(self, option: str) -> Tuple[int, Union[File, None]]:
-        depth = []
-        section_depth = option.split(":")
-
-        for file in self.files:
-            for i, line in enumerate(file.content):
-                if LineParser.skip(line):
-                    continue
-
-                line = LineParser.format_line(line)
-
-                match LineParser.get_linetype(line):
-                    case "start-section":
-                        section_name, _ = map(str.strip, line.split("{"))
-                        depth += [section_name]
-                        if depth == section_depth:
-                            return i, file
-
-                    case "end-section":
-                        depth.pop(-line.count("}"))
-                    case _:
-                        section_name, _ = line.split(" = ")
-                        depth += [section_name]
-                        if depth == section_depth:
-                            return i, file
-                        depth.pop(-1)
-
-            depth = []
-
-        return (-1, None)
-
-    def get_option(self, option: str) -> Any:
-        return self.config.get(option)
-
-    def __generate_section(self, sections: str) -> None:
-        pass
+    def save(self) -> None:
+        return Helper.save_file(self.path, self.content)
 
 
-class WriterReader:
+class Helper:
     @staticmethod
     def read_file(path: str) -> List[str]:
         global last_file
@@ -120,6 +32,28 @@ class WriterReader:
         with open(os.path.expandvars(path), "w+") as file:
             content = list(map(lambda v: v + "\n", content))
             return file.writelines(content)
+
+    @staticmethod
+    def new_sections(sections: List[str]) -> None:
+        if not sections:
+            return
+        depth = []
+
+        for i, section in enumerate(sections, 0):
+            depth += [section]
+            _, file = Helper.get_line_option(depth)
+
+            if file:
+                continue
+            line_n, file = Helper.get_line_option(depth[:-1])
+
+            if not file:
+                continue
+            indent = "    " * i
+            file.content.insert(line_n + 1, indent + section + " {")
+            file.content.insert(line_n + 2, indent + "}")
+            if i + 1 == len(sections):
+                return file.save()
 
     @staticmethod
     def read_lines(lines: List[str]):
@@ -158,6 +92,91 @@ class WriterReader:
                     pass
                 case _:
                     print(line)
+
+    @staticmethod
+    def get_line_option(option: Union[str, List[str]]) -> Tuple[int, Union[File, None]]:
+        depth = []
+        if isinstance(option, str):
+            section_depth = option.split(":")
+        else:
+            section_depth = option
+
+        for file in HyprData.files:
+            for i, line in enumerate(file.content):
+                if LineParser.skip(line):
+                    continue
+
+                line = LineParser.format_line(line)
+
+                match LineParser.get_linetype(line):
+                    case "start-section":
+                        section_name, _ = map(str.strip, line.split("{"))
+                        depth += [section_name]
+                        if depth == section_depth:
+                            return i, file
+
+                    case "end-section":
+                        depth.pop(-line.count("}"))
+                    case _:
+                        section_name, _ = line.split(" = ")
+                        depth += [section_name]
+                        if depth == section_depth:
+                            return i, file
+                        depth.pop(-1)
+
+            depth = []
+        return (-1, None)
+
+
+class Config:
+    def __init__(self, path: str) -> None:
+        self.path = path
+        self.monitors: List[Monitor] = []
+        self.binds: List[Binding] = []
+        self.variables: List[Variable] = []
+        self.config: Dict[str, Setting] = {}
+        self.beziers: Dict[str, Bezier] = {}
+        self.env: Dict[str, Env] = {}
+        self.exec: List[Exec] = []
+        self.files: List[File] = [File(path, Helper.read_file(path))]
+
+    def reload(self) -> None:
+        return Helper.read_lines(Helper.read_file(self.path))
+
+    def new_option(
+        self,
+        new_option: Setting,
+    ) -> None:
+        sections = new_option.option.split(":")[:-1]
+        line_n, file = Helper.get_line_option(sections)
+
+        if not file:
+            Helper.new_sections(sections)
+            return HyprData.new_option(new_option)
+        indent = "    " * new_option.option.count(":")
+        file.content.insert(line_n + 1, indent + new_option.format())
+        for line in file.content:
+            print(line)
+
+    def get_option(self, option: str) -> Any:
+        return self.config.get(option)
+
+    def set_option(
+        self, option: str, value: Union["Gradient", str, int, float, bool]
+    ) -> None:
+        obj_option = self.config.get(option)
+
+        if not obj_option:
+            return
+
+        obj_option.value = value
+        new_line = obj_option.format()
+        line_n, file = Helper.get_line_option(option)
+
+        if file:
+            indent = "    " * obj_option.option.count(":")
+            file.content[line_n] = indent + new_line
+            # return file.save()
 
 
 class LineParser:
@@ -236,8 +255,6 @@ class DataParser:
             value = TypeParser.to_color(value)
         elif TypeParser.is_gradient(value):
             value = TypeParser.to_gradient(value)
-        else:
-            value = value
 
         HyprData.config[section] = Setting(section, value)
 
@@ -267,10 +284,10 @@ class DataParser:
     def parse_source(line: str) -> None:
         _, path = line.split(" = ")
 
-        content = WriterReader.read_file(path)
+        content = Helper.read_file(path)
 
         HyprData.files.append(File(path, content))
-        return WriterReader.read_lines(content)
+        return Helper.read_lines(content)
 
     @staticmethod
     def parse_env(line: str) -> None:

@@ -3,12 +3,6 @@ from typing import Any, Dict, List, Tuple, Union
 
 
 @dataclass
-class File:
-    path: str
-    content: List[str]
-
-
-@dataclass
 class Setting:
     option: str
     value: Union["Gradient", "Color", str, int, float, bool]
