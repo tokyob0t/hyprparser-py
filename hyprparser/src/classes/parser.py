@@ -21,14 +21,7 @@ class Config:
         self.env: Dict[str, Env] = {}
         self.exec: List[Exec] = []
         self.files: List[File] = [File(path, Helper.read_file(path))]
-        self._insta_save: bool = True
-
-    @property
-    def insta_save(self) -> bool:
-        return self._insta_save
-
-    def set_instasave(self, insta_save: bool) -> None:
-        self._insta_save = insta_save
+        self.insta_save: bool = False
 
     def reload(self) -> None:
         return Helper.read_lines(Helper.read_file(self.path))

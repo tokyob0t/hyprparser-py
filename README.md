@@ -10,6 +10,7 @@ A Pythonic parser for Hyprland configuration files.
 from hyprparser import Color, Gradient, HyprData, Setting
 
 if __name__ == "__main__":
+
     for i in [
         "input:touchpad:natural_scroll",
         "general:col.active_border",
@@ -34,7 +35,7 @@ if __name__ == "__main__":
                 Gradient(0, [Color("00", "11", "22"), Color("dd", "e1", "e6")]),
             )
         )
-
+    HyprData.save_all()
 
 
 ```
