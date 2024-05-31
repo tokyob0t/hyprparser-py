@@ -131,7 +131,7 @@ class Env:
     value: List[str]
 
     def format(self) -> str:
-        return "env = {}, {}".format(self.name, ":".join(self.value))
+        return "env = {},{}".format(self.name, ":".join(self.value))
 
     def to_dict(self) -> Dict[str, Union[str, List[str]]]:
         return {"name": self.name, "value": self.value}

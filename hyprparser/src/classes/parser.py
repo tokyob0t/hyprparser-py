@@ -11,6 +11,13 @@ last_file = ""
 
 
 class Config:
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     def __init__(self, path: str) -> None:
         self.path = path
         self.monitors: List[Monitor] = []
@@ -40,6 +47,7 @@ class Config:
         if not file:
             Helper.new_sections(sections)
             return HyprData.new_option(new_option)
+
         indent = "    " * new_option.option.count(":")
         file.content.insert(line_n + 1, indent + new_option.format())
 
@@ -61,20 +69,65 @@ class Config:
         new_line = obj_option.format()
         line_n, file = Helper.get_line_option(option)
 
-        if file:
-            indent = "    " * obj_option.option.count(":")
-            file.content[line_n] = indent + new_line
-            if self.insta_save:
-                return file.save()
+        if not file:
+            file = HyprData.files[0]
+            line_n = len(file.content) - 1
+
+        indent = "    " * obj_option.option.count(":")
+        file.content[line_n] = indent + new_line
+
+        if HyprData.insta_save:
+            return file.save()
 
     def new_env(self, env: Env) -> None:
-        pass
+        line_n, file = Helper.get_line_option("env")
+
+        if not file:
+            file = HyprData.files[0]
+            line_n = -1
+
+        if line_n == -1:
+            file.content.append(env.format())
+        else:
+            file.content.insert(line_n, env.format())
+
+        HyprData.env[env.name] = env
+        if HyprData.insta_save:
+            return file.save()
 
     def get_env(self, env_name: str) -> Union[Env, None]:
         return self.env.get(env_name)
 
-    def set_env(self, env_name: str) -> None:
-        pass
+    def set_env(self, env_name: str, value: List[str]) -> None:
+        obj_env = HyprData.env.get(env_name)
+        if not obj_env:
+            return
+
+        obj_env.value = value
+        line_n, file = Helper.get_line_env(env_name)
+
+        if not file:
+            file = HyprData.files[0]
+            line_n = len(file.content)
+
+        file.content[line_n] = obj_env.format()
+        if HyprData.insta_save:
+            return file.save()
+
+    def new_bind(self, bind: Binding) -> None:
+        line_n, file = Helper.get_line_option("bind")
+
+        if not file:
+            file = HyprData.files[0]
+            line_n = -1
+
+        if line_n == -1:
+            file.content.append(bind.format())
+        else:
+            file.content.insert(line_n, bind.format())
+
+        if HyprData.insta_save:
+            return file.save()
 
 
 @dataclass
@@ -161,13 +214,13 @@ class Helper:
 
     @staticmethod
     def get_line_option(option: Union[str, List[str]]) -> Tuple[int, Union[File, None]]:
-        depth = []
         if isinstance(option, str):
             section_depth = option.split(":")
         else:
             section_depth = option
 
         for file in HyprData.files:
+            depth = []
             for i, line in enumerate(file.content):
                 if LineParser.skip(line):
                     continue
@@ -190,7 +243,19 @@ class Helper:
                             return i, file
                         depth.pop(-1)
 
-            depth = []
+        return (-1, None)
+
+    @staticmethod
+    def get_line_env(env_name: str) -> Tuple[int, Union[File, None]]:
+        for file in HyprData.files:
+            for i, line in enumerate(file.content):
+                line = LineParser.format_line(line)
+                match LineParser.get_linetype(line):
+                    case "env":
+                        _, env = line.split(" = ")
+                        name, *_ = env.split(",")
+                        if env_name == name:
+                            return i, file
         return (-1, None)
 
 
