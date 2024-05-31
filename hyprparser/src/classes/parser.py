@@ -10,6 +10,80 @@ last_section = []
 last_file = ""
 
 
+class Config:
+    def __init__(self, path: str) -> None:
+        self.path = path
+        self.monitors: List[Monitor] = []
+        self.binds: List[Binding] = []
+        self.variables: List[Variable] = []
+        self.config: Dict[str, Setting] = {}
+        self.beziers: Dict[str, Bezier] = {}
+        self.env: Dict[str, Env] = {}
+        self.exec: List[Exec] = []
+        self.files: List[File] = [File(path, Helper.read_file(path))]
+        self._insta_save: bool = True
+
+    @property
+    def insta_save(self) -> bool:
+        return self._insta_save
+
+    def set_instasave(self, insta_save: bool) -> None:
+        self._insta_save = insta_save
+
+    def reload(self) -> None:
+        return Helper.read_lines(Helper.read_file(self.path))
+
+    def save_all(self) -> None:
+        for file in self.files:
+            file.save()
+
+    def new_option(
+        self,
+        new_option: Setting,
+    ) -> None:
+        sections = new_option.option.split(":")[:-1]
+        line_n, file = Helper.get_line_option(sections)
+
+        if not file:
+            Helper.new_sections(sections)
+            return HyprData.new_option(new_option)
+        indent = "    " * new_option.option.count(":")
+        file.content.insert(line_n + 1, indent + new_option.format())
+
+        if self.insta_save:
+            return file.save()
+
+    def get_option(self, option: str) -> Union[Setting, None]:
+        return self.config.get(option)
+
+    def set_option(
+        self, option: str, value: Union["Gradient", str, int, float, bool]
+    ) -> None:
+        obj_option = self.config.get(option)
+
+        if not obj_option:
+            return
+
+        obj_option.value = value
+        new_line = obj_option.format()
+        line_n, file = Helper.get_line_option(option)
+
+        if file:
+            indent = "    " * obj_option.option.count(":")
+            file.content[line_n] = indent + new_line
+            if self.insta_save:
+                return file.save()
+
+    def new_env(self, env: Env) -> None:
+        pass
+
+    def get_env(self, env_name: str) -> Union[Env, None]:
+        return self.env.get(env_name)
+
+    def set_env(self, env_name: str) -> None:
+        pass
+
+
 @dataclass
 class File:
     path: str
@@ -125,56 +199,6 @@ class Helper:
 
             depth = []
         return (-1, None)
-
-
-class Config:
-    def __init__(self, path: str) -> None:
-        self.path = path
-        self.monitors: List[Monitor] = []
-        self.binds: List[Binding] = []
-        self.variables: List[Variable] = []
-        self.config: Dict[str, Setting] = {}
-        self.beziers: Dict[str, Bezier] = {}
-        self.env: Dict[str, Env] = {}
-        self.exec: List[Exec] = []
-        self.files: List[File] = [File(path, Helper.read_file(path))]
-
-    def reload(self) -> None:
-        return Helper.read_lines(Helper.read_file(self.path))
-
-    def new_option(
-        self,
-        new_option: Setting,
-    ) -> None:
-        sections = new_option.option.split(":")[:-1]
-        line_n, file = Helper.get_line_option(sections)
-
-        if not file:
-            Helper.new_sections(sections)
-            return HyprData.new_option(new_option)
-        indent = "    " * new_option.option.count(":")
-        file.content.insert(line_n + 1, indent + new_option.format())
-        return file.save()
-
-    def get_option(self, option: str) -> Union[Setting, None]:
-        return self.config.get(option)
-
-    def set_option(
-        self, option: str, value: Union["Gradient", str, int, float, bool]
-    ) -> None:
-        obj_option = self.config.get(option)
-
-        if not obj_option:
-            return
-
-        obj_option.value = value
-        new_line = obj_option.format()
-        line_n, file = Helper.get_line_option(option)
-
-        if file:
-            indent = "    " * obj_option.option.count(":")
-            file.content[line_n] = indent + new_line
-            # return file.save()
 
 
 class LineParser:
@@ -296,5 +320,5 @@ class DataParser:
         HyprData.env[var_env] = Env(var_env, value)
 
 
-HyprData = Config("$HOME/.config/hypr/hyprland.conf")
+HyprData: Config = Config("$HOME/.config/hypr/hyprland.conf")
 HyprData.reload()
