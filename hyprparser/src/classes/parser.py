@@ -3,12 +3,11 @@ from dataclasses import dataclass
 from typing import Dict, List, Tuple, Union
 
 from .linetype import LineType, LineTypeList
-from .structures import (Bezier, Binding, Env, Exec, Gradient, Monitor,
+from .structures import (Bezier, Binding, Color, Env, Exec, Gradient, Monitor,
                          Setting, TypeParser, Variable)
 
 last_section = []
 last_file = ""
-
 
 class Config:
     _instance = None
@@ -58,7 +57,7 @@ class Config:
         return self.config.get(option)
 
     def set_option(
-        self, option: str, value: Union["Gradient", str, int, float, bool]
+        self, option: str, value: Union[Gradient, Color, Color, str, int, float, bool]
     ) -> None:
         obj_option = self.config.get(option)
 
@@ -97,6 +96,7 @@ class Config:
 
     def get_env(self, env_name: str) -> Union[Env, None]:
         return self.env.get(env_name)
+    
 
     def set_env(self, env_name: str, value: List[str]) -> None:
         obj_env = HyprData.env.get(env_name)
@@ -113,6 +113,37 @@ class Config:
         file.content[line_n] = obj_env.format()
         if HyprData.insta_save:
             return file.save()
+
+    def new_bezier(self, bezier:Bezier) -> None:
+        line_n, file = Helper.get_line_option("animations:bezier")
+        if not file:
+            file = HyprData.files[0]
+            line_n = -1
+
+        if line_n == -1:
+
+            file.content.insert(line_n, bezier.format())
+
+
+    def get_bezier(self, bezier_name:str) -> Union[Bezier, None]:
+        return self.beziers.get(bezier_name)
+    
+    def set_bezier(self, bezier_name: str, value: Tuple[float, float, float, float]) -> None:
+        obj_bezier= HyprData.beziers.get(bezier_name)
+        if not obj_bezier:
+            return
+
+        obj_bezier.transition = value
+        line_n, file = Helper.get_line_bezier(obj_bezier.name)
+
+        if not file:
+            file = HyprData.files[0]
+            line_n = len(file.content)
+
+        file.content[line_n] = obj_bezier.format()
+        if HyprData.insta_save:
+            return file.save()
+
 
     def new_bind(self, bind: Binding) -> None:
         line_n, file = Helper.get_line_option("bind")
@@ -249,6 +280,9 @@ class Helper:
     def get_line_env(env_name: str) -> Tuple[int, Union[File, None]]:
         for file in HyprData.files:
             for i, line in enumerate(file.content):
+                if LineParser.skip(line):
+                    continue
+
                 line = LineParser.format_line(line)
                 match LineParser.get_linetype(line):
                     case "env":
@@ -257,7 +291,21 @@ class Helper:
                         if env_name == name:
                             return i, file
         return (-1, None)
+    @staticmethod
+    def get_line_bezier(bezier_name:str) -> Tuple[int, Union[File, None]]:
+        for file in HyprData.files:
+            for i, line in enumerate(file.content):
+                if LineParser.skip(line):
+                    continue
+                line = LineParser.format_line(line)
 
+                match LineParser.get_linetype(line):
+                    case "bezier":
+                        _, bezier = line.split(" = ")
+                        name, *_ = bezier.split(",")
+                        if bezier_name == name.strip():
+                            return i, file
+        return (-1, None) 
 
 class LineParser:
     @staticmethod
@@ -351,7 +399,7 @@ class DataParser:
         _, bezier = line.split(" = ")
         name, *curve = map(str.strip, bezier.split(",", 4))
         curve = tuple(map(float, curve))
-        HyprData.beziers[name] = Bezier(name, curve)  # noqa
+        HyprData.beziers[name] = Bezier(name, curve)  # type: ignore
 
     @staticmethod
     def parse_bind(line: str) -> None:
@@ -376,7 +424,6 @@ class DataParser:
         value = value.split(":")
 
         HyprData.env[var_env] = Env(var_env, value)
-
 
 HyprData: Config = Config("$HOME/.config/hypr/hyprland.conf")
 HyprData.reload()

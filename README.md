@@ -21,6 +21,7 @@ if __name__ == "__main__":
     # HyprData.set_option("general:gaps_in", 50)  # 5
     # HyprData.set_option("general:gaps_out", 20)  # 20
 
+
     if not HyprData.get_option(
         "input:numlock_by_default"
     ):  # if option doesnt exists add a new setting
