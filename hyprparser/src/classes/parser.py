@@ -28,6 +28,8 @@ class Config:
         self.exec: List[Exec] = []
         self.files: List[File] = [File(path, Helper.read_file(path))]
         self.insta_save: bool = False
+        self.override_options:bool = False
+
 
     def reload(self) -> None:
         return Helper.read_lines(Helper.read_file(self.path))
@@ -96,7 +98,7 @@ class Config:
 
     def get_env(self, env_name: str) -> Union[Env, None]:
         return self.env.get(env_name)
-    
+
 
     def set_env(self, env_name: str, value: List[str]) -> None:
         obj_env = HyprData.env.get(env_name)
@@ -127,7 +129,7 @@ class Config:
 
     def get_bezier(self, bezier_name:str) -> Union[Bezier, None]:
         return self.beziers.get(bezier_name)
-    
+
     def set_bezier(self, bezier_name: str, value: Tuple[float, float, float, float]) -> None:
         obj_bezier= HyprData.beziers.get(bezier_name)
         if not obj_bezier:
@@ -305,7 +307,7 @@ class Helper:
                         name, *_ = bezier.split(",")
                         if bezier_name == name.strip():
                             return i, file
-        return (-1, None) 
+        return (-1, None)
 
 class LineParser:
     @staticmethod
@@ -420,8 +422,7 @@ class DataParser:
     @staticmethod
     def parse_env(line: str) -> None:
         _, env = line.split(" = ")
-        var_env, value = map(str.strip, env.split(",", 2))
-        value = value.split(":")
+        var_env, *value = map(str.strip, env.split(",", 1))
 
         HyprData.env[var_env] = Env(var_env, value)
 
