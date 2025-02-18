@@ -413,7 +413,7 @@ class DataParser:
     @staticmethod
     def parse_source(line: str) -> None:
         _, path = line.split(" = ")
-
+        path = os.path.expanduser(path)
         content = Helper.read_file(path)
 
         HyprData.files.append(File(path, content))
