@@ -175,8 +175,11 @@ class File:
 class Helper:
     @staticmethod
     def read_file(path: str) -> List[str]:
+        path = path.replace("$env.", "$")  # Normalize env var syntax
         global last_file
-        last_file = os.path.expandvars(path)
+        last_file = os.path.expanduser(os.path.expandvars(path))
+        if not os.path.exists(last_file):  # Skip missing files
+            return []  # Return an empty list instead of crashing
         with open(last_file) as file:
             return file.read().splitlines()
 
